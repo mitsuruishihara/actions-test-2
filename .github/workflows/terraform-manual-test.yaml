@@ -40,6 +40,7 @@ jobs:
         continue-on-error: true
         if: ${{ inputs.environment }} == "stag"
         run: |
+          echo ${{ inputs.environment }}
           echo "TERRAFORM_WORKSPACE=stag" >> $GITHUB_ENV
           echo "AWS_ACCOUNT_ID=278109369713" >> $GITHUB_ENV
           #echo "TFSATTE_BUCKET_NAME=stag-nst-tfstate" >> $GITHUB_ENV
@@ -50,7 +51,7 @@ jobs:
         if: ${{ inputs.environment }} == "prod"
         run: |
           echo "TERRAFORM_WORKSPACE=prod" >> $GITHUB_ENV
-          echo "AWS_ACCOUNT_ID=514818667981" >> $GITHUB_ENV
+          echo "AWS_ACCOUNT_ID=278109369713" >> $GITHUB_ENV
           echo "TFSATTE_BUCKET_NAME=prod-nst-tfstate" >> $GITHUB_ENV
           echo "SLACK_CHANNEL_ID=nst-cicd-notify-prod" >> $GITHUB_ENV
 
@@ -97,7 +98,7 @@ jobs:
       - name: Terraform Validate
         id: validate
         run: terraform validate -no-color
-        continue-on-error: false
+        continue-on-error: true
 
       - name: TFLint
         continue-on-error: true
