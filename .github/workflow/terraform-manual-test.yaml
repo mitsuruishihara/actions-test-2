@@ -1,0 +1,121 @@
+name: TerraformManualRelease
+on: 
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'AWS Environment'
+        required: true
+        type: choice
+        options:
+          - stag
+          - prod
+      plan_or_apply:
+        description: 'Terraform plan or apply'
+        required: true
+        type: choice
+        options:
+          - plan
+          - apply
+
+jobs:
+  terraform_operation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./terraform
+    env:
+      DATADOG_API_KEY: ${{ secrets.DATADOG_API_KEY }}
+      DATADOG_APP_KEY: ${{ secrets.DATADOG_APP_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set env to stag
+        if: ${{ inputs.environment }} == "stag"
+        run: |
+          echo "TERRAFORM_WORKSPACE=stag" >> $GITHUB_ENV
+          echo "AWS_ACCOUNT_ID=137658462190" >> $GITHUB_ENV
+          echo "TFSATTE_BUCKET_NAME=stag-nst-tfstate" >> $GITHUB_ENV
+          echo "SLACK_CHANNEL_ID=nst-cicd-notify-stag" >> $GITHUB_ENV
+
+      - name: Set env to prod
+        if: ${{ inputs.environment }} == "prod"
+        run: |
+          echo "TERRAFORM_WORKSPACE=prod" >> $GITHUB_ENV
+          echo "AWS_ACCOUNT_ID=514818667981" >> $GITHUB_ENV
+          echo "TFSATTE_BUCKET_NAME=prod-nst-tfstate" >> $GITHUB_ENV
+          echo "SLACK_CHANNEL_ID=nst-cicd-notify-prod" >> $GITHUB_ENV
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1-node16
+        with:
+          aws-region: ap-northeast-1
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/ci-terraform
+          role-session-name: ci-terraform
+
+      - name: Setup tfnotify
+        run: |
+          sudo curl -fL -o tfnotify.tar.gz https://github.com/mercari/tfnotify/releases/download/v0.7.0/tfnotify_linux_amd64.tar.gz
+          sudo tar -C /usr/bin -xzf ./tfnotify.tar.gz
+
+      - name: Terraform Setup
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.2.6
+
+      - name: Terraform Format
+        id: fmt
+        run: terraform fmt -check -recursive
+        continue-on-error: false
+
+      - name: Terraform Init
+        id: init
+        run: terraform init -backend-config="bucket=${{ env.TFSATTE_BUCKET_NAME }}"
+        env:
+          GIT_SSH_COMMAND: "echo '${{ secrets.GH_DJT_TERRAFORM_MODULES_SSH_PRIVATE_KEY }}' > id_rsa
+            && ssh-keyscan github.com > known_hosts
+            && chmod 600 id_rsa known_hosts
+            && ssh -i ./id_rsa -o UserKnownHostsFile=./known_hosts"
+
+      - name: Terraform Workspace Select
+        id: select
+        run: terraform workspace select ${{ env.TERRAFORM_WORKSPACE }}
+
+      - name: Terraform Validate
+        id: validate
+        run: terraform validate -no-color
+        continue-on-error: false
+
+      - name: TFLint
+        uses: reviewdog/action-tflint@v1.17.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          reporter: github-pr-review
+          fail_on_error: false
+          filter_mode: "nofilter"
+          tflint_rulesets: "aws"
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Terraform Plan
+        if: ${{ inputs.plan_or_apply }} == "plan"
+        id: plan
+        run: |
+          terraform plan -var-file env/${{ env.TERRAFORM_WORKSPACE }}.tfvars -lock=false -no-color 
+  
+      - name: Terraform Apply
+        if: ${{ inputs.plan_or_apply }} == "apply"
+        id: apply
+        run: |
+          terraform apply -var-file env/${{ env.TERRAFORM_WORKSPACE }}.tfvars -auto-approve >> apply_result.temp
+          cat apply_result.temp | tfnotify --config ../.tfnotify/slack.yml apply --message "$(date)"
+        env:
+          SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
+          SLACK_CHANNEL_ID: ${{ env.SLACK_CHANNEL_ID }}
+          SLACK_BOT_NAME: tfnotify
