@@ -40,9 +40,9 @@ jobs:
         if: ${{ inputs.environment }} == "stag"
         run: |
           echo "TERRAFORM_WORKSPACE=stag" >> $GITHUB_ENV
-          echo "AWS_ACCOUNT_ID=137658462190" >> $GITHUB_ENV
-          echo "TFSATTE_BUCKET_NAME=stag-nst-tfstate" >> $GITHUB_ENV
-          echo "SLACK_CHANNEL_ID=nst-cicd-notify-stag" >> $GITHUB_ENV
+          echo "AWS_ACCOUNT_ID=278109369713" >> $GITHUB_ENV
+          #echo "TFSATTE_BUCKET_NAME=stag-nst-tfstate" >> $GITHUB_ENV
+          #echo "SLACK_CHANNEL_ID=nst-cicd-notify-stag" >> $GITHUB_ENV
 
       - name: Set env to prod
         if: ${{ inputs.environment }} == "prod"

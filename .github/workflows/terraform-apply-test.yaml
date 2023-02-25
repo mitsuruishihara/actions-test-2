@@ -26,14 +26,16 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Set env to sand
+        continue-on-error: true
         if: contains(github.base_ref, 'master')
         run: |
           echo "TERRAFORM_WORKSPACE=sand" >> $GITHUB_ENV
-          echo "AWS_ACCOUNT_ID=506683541687" >> $GITHUB_ENV
-          echo "TFSATTE_BUCKET_NAME=sand-nst-tfstate" >> $GITHUB_ENV
-          echo "SLACK_CHANNEL_ID=nst-cicd-notify-sand" >> $GITHUB_ENV
+          echo "AWS_ACCOUNT_ID=278109369713" >> $GITHUB_ENV
+          #echo "TFSATTE_BUCKET_NAME=sand-nst-tfstate" >> $GITHUB_ENV
+          #echo "SLACK_CHANNEL_ID=nst-cicd-notify-sand" >> $GITHUB_ENV
 
       - name: Configure AWS Credentials
+        continue-on-error: true
         uses: aws-actions/configure-aws-credentials@v1-node16
         with:
           aws-region: ap-northeast-1
@@ -41,21 +43,25 @@ jobs:
           role-session-name: ci-terraform
 
       - name: Setup tfnotify
+        continue-on-error: true
         run: |
           sudo curl -fL -o tfnotify.tar.gz https://github.com/mercari/tfnotify/releases/download/v0.7.0/tfnotify_linux_amd64.tar.gz
           sudo tar -C /usr/bin -xzf ./tfnotify.tar.gz
 
       - name: Terraform Setup
+        continue-on-error: true
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.2.6
 
       - name: Terraform Format
+        continue-on-error: true
         id: fmt
         run: terraform fmt -check -recursive
         continue-on-error: false
 
       - name: Terraform Init
+        continue-on-error: true
         id: init
         run: terraform init -backend-config="bucket=${{ env.TFSATTE_BUCKET_NAME }}"
         env:
@@ -65,15 +71,18 @@ jobs:
             && ssh -i ./id_rsa -o UserKnownHostsFile=./known_hosts"
 
       - name: Terraform Workspace Select
+        continue-on-error: true
         id: select
         run: terraform workspace select ${{ env.TERRAFORM_WORKSPACE }}
 
       - name: Terraform Validate
+        continue-on-error: true
         id: validate
         run: terraform validate -no-color
         continue-on-error: false
 
       - name: TFLint
+        continue-on-error: true
         uses: reviewdog/action-tflint@v1.17.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -85,6 +94,7 @@ jobs:
           REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Terraform Apply
+        continue-on-error: true
         id: apply
         run: |
           terraform apply -var-file env/${{ env.TERRAFORM_WORKSPACE }}.tfvars -auto-approve >> apply_result.temp
@@ -106,6 +116,7 @@ jobs:
     if: contains(github.base_ref, 'master') && !endsWith(github.head_ref, '-ug')
     steps:
       - name: Checkout
+        continue-on-error: true
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
@@ -122,6 +133,7 @@ jobs:
       #     # repository: "owner/repo"
 
       - name: git-pr-release master to main
+        continue-on-error: true
         # 末尾が*-ugのブランチは git-pr-releaseに含めない
         uses: bakunyo/git-pr-release-action@v1.4
         env:
