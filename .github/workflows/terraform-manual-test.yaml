@@ -47,7 +47,7 @@ jobs:
           #echo "SLACK_CHANNEL_ID=nst-cicd-notify-stag" >> $GITHUB_ENV
 
       - name: Set env to prod
-        continue-on-error: true
+        continue-on-error: false
         if: ${{ github.event.inputs.environment }} == "prod"
         run: |
           echo ${{ github.event.inputs.environment }}
