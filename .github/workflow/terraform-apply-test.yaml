@@ -2,7 +2,7 @@ name: TerraformApply
 on:
   pull_request:
     branches:
-    - dev
+    - master
     types: [closed]
 
 jobs:
@@ -26,7 +26,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Set env to sand
-        if: contains(github.base_ref, 'dev')
+        if: contains(github.base_ref, 'master')
         run: |
           echo "TERRAFORM_WORKSPACE=sand" >> $GITHUB_ENV
           echo "AWS_ACCOUNT_ID=506683541687" >> $GITHUB_ENV
@@ -120,13 +120,13 @@ jobs:
           # Optional (defaults to the current repository).
           # repository: "owner/repo"
 
-      - name: git-pr-release dev to main
+      - name: git-pr-release master to main
         # 末尾が*-ugのブランチは git-pr-releaseに含めない
-        if: contains(github.base_ref, 'dev') && ${{ !endsWith(github.head_ref, '-ug') }}
+        if: contains(github.base_ref, 'master') && ${{ !endsWith(github.head_ref, '-ug') }}
         uses: bakunyo/git-pr-release-action@v1.4
         env:
           GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
           GIT_PR_RELEASE_BRANCH_PRODUCTION: main
-          GIT_PR_RELEASE_BRANCH_STAGING: dev
+          GIT_PR_RELEASE_BRANCH_STAGING: master
           GIT_PR_RELEASE_LABELS: stag/prod-release
           GIT_PR_RELEASE_TEMPLATE: .git-pr-release-template
