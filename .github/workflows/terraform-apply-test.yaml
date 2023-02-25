@@ -55,7 +55,6 @@ jobs:
           terraform_version: 1.2.6
 
       - name: Terraform Format
-        continue-on-error: true
         id: fmt
         run: terraform fmt -check -recursive
         continue-on-error: false
@@ -79,7 +78,6 @@ jobs:
         continue-on-error: true
         id: validate
         run: terraform validate -no-color
-        continue-on-error: false
 
       - name: TFLint
         continue-on-error: true
