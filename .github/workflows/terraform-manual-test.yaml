@@ -38,9 +38,9 @@ jobs:
 
       - name: Set env to stag
         continue-on-error: true
-        if: ${{ inputs.environment }} == "stag"
+        if: ${{ github.event.inputs.environment }} == "stag"
         run: |
-          echo ${{ inputs.environment }}
+          echo ${{ github.event.inputs.environment }}
           echo "TERRAFORM_WORKSPACE=stag" >> $GITHUB_ENV
           echo "AWS_ACCOUNT_ID=278109369713" >> $GITHUB_ENV
           #echo "TFSATTE_BUCKET_NAME=stag-nst-tfstate" >> $GITHUB_ENV
@@ -48,7 +48,7 @@ jobs:
 
       - name: Set env to prod
         continue-on-error: true
-        if: ${{ inputs.environment }} == "prod"
+        if: ${{ github.event.inputs.environment }} == "prod"
         run: |
           echo "TERRAFORM_WORKSPACE=prod" >> $GITHUB_ENV
           echo "AWS_ACCOUNT_ID=278109369713" >> $GITHUB_ENV
