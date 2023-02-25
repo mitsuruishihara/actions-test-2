@@ -50,6 +50,7 @@ jobs:
         continue-on-error: true
         if: ${{ github.event.inputs.environment }} == "prod"
         run: |
+          echo ${{ github.event.inputs.environment }}
           echo "TERRAFORM_WORKSPACE=prod" >> $GITHUB_ENV
           echo "AWS_ACCOUNT_ID=278109369713" >> $GITHUB_ENV
           echo "TFSATTE_BUCKET_NAME=prod-nst-tfstate" >> $GITHUB_ENV
@@ -114,14 +115,14 @@ jobs:
       
       - name: Terraform Plan
         continue-on-error: true
-        if: ${{ inputs.plan_or_apply }} == "plan"
+        if: ${{ github.event.inputs.plan_or_apply }} == "plan"
         id: plan
         run: |
           terraform plan -var-file env/${{ env.TERRAFORM_WORKSPACE }}.tfvars -lock=false -no-color 
   
       - name: Terraform Apply
         continue-on-error: true
-        if: ${{ inputs.plan_or_apply }} == "apply"
+        if: ${{ github.event.inputs.plan_or_apply }} == "apply"
         id: apply
         run: |
           terraform apply -var-file env/${{ env.TERRAFORM_WORKSPACE }}.tfvars -auto-approve >> apply_result.temp
