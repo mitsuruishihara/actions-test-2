@@ -38,7 +38,7 @@ jobs:
 
       - name: Set env to stag
         continue-on-error: true
-        if: ${{ github.event.inputs.environment }} == "stag"
+        if: ${{ github.event.inputs.environment }} == stag
         run: |
           echo ${{ github.event.inputs.environment }}
           echo "TERRAFORM_WORKSPACE=stag" >> $GITHUB_ENV
@@ -48,7 +48,7 @@ jobs:
 
       - name: Set env to prod
         continue-on-error: false
-        if: ${{ github.event.inputs.environment }} == "prod"
+        if: ${{ github.event.inputs.environment }} == prod
         run: |
           echo ${{ github.event.inputs.environment }}
           echo "TERRAFORM_WORKSPACE=prod" >> $GITHUB_ENV
