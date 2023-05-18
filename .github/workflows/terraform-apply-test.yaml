@@ -41,6 +41,9 @@ jobs:
           aws-region: ap-northeast-1
           role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/ci-terraform
           role-session-name: ci-terraform
+      
+      - name: Setup tmate session
+      uses: mxschmitt/action-tmate@v3
 
       - name: Setup tfnotify
         continue-on-error: true
