@@ -43,7 +43,7 @@ jobs:
           role-session-name: ci-terraform
       
       - name: Setup tmate session
-      uses: mxschmitt/action-tmate@v3
+        uses: mxschmitt/action-tmate@v3
 
       - name: Setup tfnotify
         continue-on-error: true
