@@ -7,6 +7,7 @@ on:
         required: true
         type: choice
         options:
+          - sand
           - stag
           - prod
       plan_or_apply:
@@ -56,6 +57,11 @@ jobs:
           echo "TFSATTE_BUCKET_NAME=prod-nst-tfstate" >> $GITHUB_ENV
           echo "SLACK_CHANNEL_ID=nst-cicd-notify-prod" >> $GITHUB_ENV
 
+      - name: Exit when apply to sand environment
+        if: ${{ github.event.inputs.environment == 'sand' }} && ${{ github.event.inputs.plan_or_apply == 'apply' }}
+        run: |
+          echo "ManualRlease経由でsand環境にterraform applyすることはできません。終了します。" && exit 1     
+      
       - name: Configure AWS Credentials
         continue-on-error: true
         uses: aws-actions/configure-aws-credentials@v1-node16
@@ -118,11 +124,11 @@ jobs:
         if: ${{ github.event.inputs.plan_or_apply == 'plan' }}
         id: plan
         run: |
-          terraform plan -var-file env/${{ env.TERRAFORM_WORKSPACE }}.tfvars -lock=false -no-color 
-  
+          terraform plan -var-file env/${{ env.TERRAFORM_WORKSPACE }}.tfvars -lock=false -no-color
+    
       - name: Terraform Apply
         continue-on-error: true
-        if: ${{ github.event.inputs.plan_or_apply == 'apply' }}
+        if: ${{ github.event.inputs.plan_or_apply == 'apply' }} && (${{ github.event.inputs.environment == 'stg' }} || ${{ github.event.inputs.environment == 'prod' }}) 
         id: apply
         run: |
           terraform apply -var-file env/${{ env.TERRAFORM_WORKSPACE }}.tfvars -auto-approve >> apply_result.temp
