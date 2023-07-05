@@ -58,9 +58,10 @@ jobs:
           echo "SLACK_CHANNEL_ID=nst-cicd-notify-prod" >> $GITHUB_ENV
 
       - name: Exit when apply to sand environment
-        if: ${{ github.event.inputs.environment == 'sand' }} && ${{ github.event.inputs.plan_or_apply == 'apply' }}
+        #if: ${{ github.event.inputs.environment == 'sand'  }} && ${{ github.event.inputs.plan_or_apply == 'apply' }}
+        if: ${{ github.event.inputs.environment == 'sand' &&  github.event.inputs.plan_or_apply == 'apply' }}
         run: |
-          echo "ManualRlease経由でsand環境にterraform applyすることはできません。終了します。" && exit 1     
+          echo "ManualRelease経由でsand環境にterraform applyすることはできません。終了します。" && exit 1     
       
       - name: Configure AWS Credentials
         continue-on-error: true
