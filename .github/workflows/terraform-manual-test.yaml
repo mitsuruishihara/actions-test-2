@@ -129,7 +129,7 @@ jobs:
     
       - name: Terraform Apply
         continue-on-error: true
-        if: ${{ github.event.inputs.plan_or_apply == 'apply' && (github.event.inputs.environment == 'stg' || github.event.inputs.environment == 'prod') }}
+        if: ${{ github.event.inputs.plan_or_apply == 'apply' && (github.event.inputs.environment == 'stag' || github.event.inputs.environment == 'prod') }}
         id: apply
         run: |
           terraform apply -var-file env/${{ env.TERRAFORM_WORKSPACE }}.tfvars -auto-approve >> apply_result.temp
