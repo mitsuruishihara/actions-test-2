@@ -2,7 +2,7 @@ name: TerraformApply
 on:
   pull_request:
     branches:
-    - master
+    - main
     types: [closed]
 
 jobs:
@@ -53,6 +53,9 @@ jobs:
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.2.6
+      
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
 
       - name: Terraform Format
         id: fmt
