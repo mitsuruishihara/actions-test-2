@@ -144,7 +144,7 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: config
-          trivy-config: ../trivy.yml
+          trivy-config: ./conf/trivy.yml
         # 途中でエラーが出ても実体のリソースに影響はないので続行する
         continue-on-error: true
 
