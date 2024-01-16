@@ -1,0 +1,198 @@
+name: Terraform Plan
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+      - 'feature/**'
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+env:
+  TERRAFORM_VERSION: 1.1.0
+  AWS_ROLE_ARN: arn:aws:iam::834824566334:role/Mafin-CoreGithubActionsRole
+  AWS_REGION: ap-northeast-1
+  AWS_WEB_IDENTITY_TOKEN_FILE: /tmp/awscreds
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      targets: ${{ steps.output-targets.outputs.targets }}
+      plan_targets: ${{ steps.output-targets.outputs.plan_targets }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup ssh
+        env:
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+          chmod 700 ~/.ssh/id_rsa
+          eval $(ssh-agent -s)
+          ssh-add ~/.ssh/id_rsa
+          ssh-keyscan -H github.com >> ~/.ssh/known_hosts
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v34
+
+      - name: Output target dirs
+        id: output-targets
+        uses: k1LoW/github-script-ruby@v2
+        with:
+          script: |
+            require 'json'
+            dirs = []
+            Dir.glob('**/*.tf').each do |f|
+              dirs.push(File.dirname(f))
+            end
+            valid_dirs = dirs.uniq
+            files = '${{ steps.changed-files.outputs.all_changed_files }}'.split
+            targets = valid_dirs.select { |v| files.select { |d| d.match?(v) }.size > 0 }
+            plan_targets = targets.flatten.uniq
+            puts "Target dirs: #{targets}"
+            puts "Plan target dirs: #{plan_targets}"
+            core.set_output('targets', targets.to_json)
+            core.set_output('plan_targets', plan_targets.to_json)
+
+  terraform_plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+    needs: setup
+    env:
+      AWS_DEFAULT_REGION: ap-northeast-1
+      GITHUB_OWNER: metaps
+      GITHUB_TOKEN: ${{ secrets.PERSONAL_GITHUB_TOKEN }}
+      SSH_KEY: ${{ secrets.SSH_KEY }}
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      TF_CLI_ARGS_plan: -parallelism=10
+      TF_CLI_ARGS_apply: -parallelism=10
+      TF_CLI_ARGS_destroy: -parallelism=10
+      TF_VAR_app_domain: mafin.biz
+      TF_VAR_app_name: mafin-core
+      TF_VAR_cloudwatch_logs_retantion_days: 30
+      TF_VAR_datadog_api_key: ${{ secrets.DATADOG_API_KEY }}
+      TF_VAR_datadog_app_key: ${{ secrets.DATADOG_APP_KEY }}
+      TF_VAR_ec2_key_name: 
+      TF_VAR_github_genova_secret: ${{ secrets.GENOVA_GITHUB_SECRET_KEY }}
+      TF_VAR_s3_bucket: mafin-biz
+      TF_VAR_s3_lifecycle_expiration_days: 90
+      TF_VAR_infra_slack_channel: mafin_core_infra
+      TF_VAR_infra_slack_webhook_url: ${{ secrets.INFRA_SLACK_WEBHOOK_URL }}
+      TF_VAR_pagerduty_service_key: ${{ secrets.PAGERDUTY_SERVICE_KEY }}
+      TF_VAR_pagerduty_token: ${{ secrets.PAGERDUTY_TOKEN }}
+      TF_VAR_sentry_organization: metaps
+      TF_VAR_sentry_token: ${{ secrets.SENTRY_TOKEN }}
+      TF_VAR_sreshine_api_key: ${{ secrets.SRESHINE_API_KEY }}
+      TF_VAR_slack_channel_id: ${{ secrets.SLACK_CHANNEL_ID }}
+      TF_VAR_slack_token: ${{ secrets.SLACK_TOKEN }}
+    defaults:
+      run:
+        working-directory: ${{ matrix.target }}
+    strategy:
+      matrix:
+        target: ${{ fromJSON(needs.setup.outputs.plan_targets) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set AWS credentials
+        uses: aws-actions/configure-aws-credentials@master
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup ssh
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+          chmod 700 ~/.ssh/id_rsa
+          eval $(ssh-agent -s)
+          ssh-add ~/.ssh/id_rsa
+          ssh-keyscan -H github.com >> ~/.ssh/known_hosts
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Terraform Applcation Init
+        if: contains(matrix.target, 'providers/aws/application')
+        id: application-init
+        run: terraform init -reconfigure -backend-config="key=${{ matrix.target }}.tfstate"
+
+      - name: Terraform Init
+        if: "!contains(matrix.target, 'providers/aws/application')"
+        id: init
+        run: terraform init -upgrade
+
+      - name: Terraform Validate
+        id: validate
+        run: terraform validate -no-color
+
+      #- name: Run Trivy
+      #  uses: aquasecurity/trivy-action@master
+      #  with:
+      #    scan-type: config
+      #    trivy-config: ../trivy.yml
+      #  # 途中でエラーが出ても実体のリソースに影響はないので続行する
+      #  continue-on-error: true
+
+      - name: Terraform Applcation Plan
+        if: contains(matrix.target, 'providers/aws/application')
+        id: application-plan
+        run: terraform plan -no-color -var="env=production"
+        # 途中でエラーが出ても実体のリソースに影響はないので続行する
+        continue-on-error: true
+
+      - name: Terraform Plan
+        if: "!contains(matrix.target, 'providers/aws/application')"
+        id: plan
+        run: terraform plan -no-color
+        # 途中でエラーが出ても実体のリソースに影響はないので続行する
+        continue-on-error: true
+
+      - uses: jwalton/gh-find-current-pr@v1
+        id: findPr
+        with:
+          state: open
+
+      - name: Update Pull Request
+        uses: actions/github-script@v6
+        env:
+          INIT_OUTCOME: ${{ steps.init.outcome == 'skipped' && steps.application-init.outcome || steps.init.outcome }}
+          PLAN_OUTPUTS: ${{ steps.plan.outputs.stdout == '' && steps.application-plan.outputs.stdout || steps.plan.outputs.stdout }}
+          PLAN_OUTCOME: ${{ steps.plan.outcome == 'skipped' && steps.application-plan.outcome || steps.plan.outcome }}
+          GITHUB_ISSUE_NUMBER: ${{ steps.findPr.outputs.pr }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = `#### Terraform Plan 📖\`${{ matrix.target }}\`
+            #### Terraform Initialization ⚙️ \`${process.env.INIT_OUTCOME}\`
+            #### Terraform Validation 🤖\`${{ steps.validate.outcome }}\`
+            #### Terraform Plan 📖\`${process.env.PLAN_OUTCOME}\`
+
+            <summary>Show Plan</summary>
+
+            \`\`\`\n${process.env.PLAN_OUTPUTS}\`\`\`
+
+            *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`, Workflow: \`${{ github.workflow }}\`*`;
+
+            if (!process.env.PLAN_OUTPUTS.includes("No changes")) {
+              await github.rest.issues.createComment({
+                issue_number: process.env.GITHUB_ISSUE_NUMBER,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: output
+              })
+            }
