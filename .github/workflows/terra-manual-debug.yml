@@ -1,4 +1,4 @@
-name: TerraformManualRelease
+name: Terraform Manual Release
 run-name: TerraformManualRelease [${{ inputs.environment }}] [${{ inputs.plan_or_apply }}] From [${{ github.ref_name }}]
 on:
   workflow_dispatch:
