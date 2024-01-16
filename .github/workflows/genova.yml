@@ -2,7 +2,7 @@ on:
     push:
       paths:
         - 'log_forwarder/**'
-  
+
   jobs:
     genova_auto_deploy:
       runs-on: ubuntu-latest
