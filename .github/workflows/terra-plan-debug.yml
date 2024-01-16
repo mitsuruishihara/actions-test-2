@@ -140,13 +140,13 @@ jobs:
         id: validate
         run: terraform validate -no-color
 
-      #- name: Run Trivy
-      #  uses: aquasecurity/trivy-action@master
-      #  with:
-      #    scan-type: config
-      #    trivy-config: ../trivy.yml
-      #  # 途中でエラーが出ても実体のリソースに影響はないので続行する
-      #  continue-on-error: true
+      - name: Run Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: config
+          trivy-config: ../trivy.yml
+        # 途中でエラーが出ても実体のリソースに影響はないので続行する
+        continue-on-error: true
 
       - name: Terraform Applcation Plan
         if: contains(matrix.target, 'providers/aws/application')
