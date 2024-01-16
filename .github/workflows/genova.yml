@@ -1,0 +1,14 @@
+on:
+    push:
+      paths:
+        - 'log_forwarder/**'
+  
+  jobs:
+    genova_auto_deploy:
+      runs-on: ubuntu-latest
+      steps:
+        - name: genova
+          uses: metaps/action-genova@main
+          with:
+            app-domain: "mafin.biz"
+            genova-github-secret-key: "${{ secrets.GENOVA_GITHUB_SECRET_KEY }}"
